@@ -12,11 +12,11 @@
         "sourceType": "module"
     },
     "plugins": ["react"],
-    "no-extra-semi": "error",
     "rules": {
         "indent": ["error", 4],
         "linebreak-style": ["error", "unix"],
         "quotes": ["error", "single"],
+        "no-extra-semi": "error",
         "semi": ["error", "always"]
     }
 }
