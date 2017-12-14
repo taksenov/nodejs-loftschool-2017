@@ -8,7 +8,7 @@
 
 **Homework #0**: [Создать конфигурационный файл для линтера eslint](https://github.com/taksenov/nodejs-loftschool-2017)
 
-**Homework #1**: [Систематизация музыки (консольное приложение)](https://github.com/taksenov/nodejs-loftschool-2017)
+**Homework #1**: [Систематизация музыки (консольное приложение)](https://github.com/taksenov/nodejs-loftschool-2017/tree/homework-1)
 
 2. Консольные часы в реальном времени
 3. Одностраничный сайт визитка с простой админкой (Express.js)
