@@ -86,7 +86,7 @@ const handleCombineMusicCollection = (base, outBase, level) => {
                     }
                 }
             });
-            resolve();
+            resolve(base);
         } catch (err) {
             console.error(err);
             reject(new Error('HANDLE_COMBINE_MUSIC_COLLECTION_ERROR'));
@@ -94,7 +94,7 @@ const handleCombineMusicCollection = (base, outBase, level) => {
     });
 }; //handleCombineMusicCollection
 
-const handleDeleteInputDir = (base, level) => {
+const handleDeleteFilesInInputDir = (base, level) => {
     return new Promise((resolve, reject) => {
         try {
             const files = fs.readdirSync(base);
@@ -102,36 +102,50 @@ const handleDeleteInputDir = (base, level) => {
                 let localBase = path.join(base, item);
                 let state = fs.statSync(localBase);
                 if (state.isDirectory()) {
-                    fs.readdir(state, function(err, files) {
-                        if (err) {
-                            // some sort of error
-                        } else {
-                            if (!files.length) {
-                                fs.rmdirSync(item);
-                                // directory appears to be empty
-                            }
-                        }
-                    });
-                    console.log(' '.repeat(level) + 'Dir: ' + item);
-                    handleDeleteInputDir(localBase, level + 1);
+                    handleDeleteFilesInInputDir(localBase, level + 1);
                 } else {
-                    console.log(' '.repeat(level) + 'File: ' + it__em);
-                    fs.unlinkSync(item);
+                    fs.unlinkSync(localBase);
                 }
             });
+            resolve(base);
+        } catch (err) {
+            console.error(err);
+            reject(new Error('HANDLE_DELETE_FILES_IN_INPUT_DIR_ERROR'));
+        }
+    });
+}; //handleDeleteFilesInInputDir
+
+const handleDeleteInputDir = base => {
+    return new Promise((resolve, reject) => {
+        try {
+            if (fs.existsSync(base)) {
+                fs.readdirSync(base).forEach(file => {
+                    var curPath = base + '/' + file;
+                    if (fs.lstatSync(curPath).isDirectory()) {
+                        // recurse
+                        handleDeleteInputDir(curPath);
+                    } else {
+                        // delete file
+                        fs.unlinkSync(curPath);
+                    }
+                });
+                fs.rmdirSync(base);
+            }
             resolve();
         } catch (err) {
             console.error(err);
             reject(new Error('HANDLE_DELETE_INPUT_DIR_ERROR'));
         }
     });
-}; //handleDeleteInputDir;
+}; //handleDeleteInputDir
 // handlers for file sorting programs ============================================================
 
 handleCombineMusicCollection(inDir, outDir, 0)
     .then(inDir => {
         if (isDelete) {
-            handleDeleteInputDir(inDir, 0);
+            handleDeleteFilesInInputDir(inDir, 0).then(inDir => {
+                handleDeleteInputDir(inDir);
+            });
         } else {
             process.exit();
         }
@@ -139,27 +153,3 @@ handleCombineMusicCollection(inDir, outDir, 0)
     .catch(error => {
         console.error(error);
     });
-
-// fs.readdir(dirname, function(err, files) {
-//     if (err) {
-//         // some sort of error
-//     } else {
-//         if (!files.length) {
-//             // directory appears to be empty
-//         }
-//     }
-// });
-
-// var deleteFolderRecursive = function(path) {
-//   if (fs.existsSync(path)) {
-//     fs.readdirSync(path).forEach(function(file, index){
-//       var curPath = path + "/" + file;
-//       if (fs.lstatSync(curPath).isDirectory()) { // recurse
-//         deleteFolderRecursive(curPath);
-//       } else { // delete file
-//         fs.unlinkSync(curPath);
-//       }
-//     });
-//     fs.rmdirSync(path);
-//   }
-// };
