@@ -37,48 +37,133 @@ const isDelete = deleteParam.status;
 // нужен будет parse
 // path.basename(path[, ext])
 let dirsArr = [];
-const readDir = (base, outBase, level) => {
-    const files = fs.readdirSync(base);
-    let firstLetterTemp = '';
-    let dirTemp;
-    let tempDirFileName;
-    files.forEach(item => {
-        let localBase = path.join(base, item);
-        let state = fs.statSync(localBase);
-        if (state.isDirectory()) {
-            readDir(localBase, outBase, level + 1);
-        } else {
-            if (path.extname(localBase).toUpperCase() === '.MP3') {
-                firstLetterTemp = path
-                    .basename(localBase)
-                    .slice(0, 1)
-                    .toUpperCase();
-                if (dirsArr.indexOf(firstLetterTemp) === -1) {
-                    dirsArr.push(firstLetterTemp);
-                    dirTemp = path.resolve(
-                        '' + outBase,
-                        './' + firstLetterTemp
-                    );
-                    tempDirFileName = path.resolve('' + dirTemp, './' + item);
-                    fs.mkdirSync(dirTemp);
-                    fs
-                        .createReadStream(localBase)
-                        .pipe(fs.createWriteStream(tempDirFileName));
-                } else {
-                    dirTemp = path.resolve(
-                        '' + outBase,
-                        './' + firstLetterTemp
-                    );
-                    tempDirFileName = path.resolve('' + dirTemp, './' + item);
-                    fs
-                        .createReadStream(localBase)
-                        .pipe(fs.createWriteStream(tempDirFileName));
+// const readDir = (base, outBase, level) => {
+//     const files = fs.readdirSync(base);
+//     let firstLetterTemp = '';
+//     let dirTemp;
+//     let tempDirFileName;
+//     files.forEach(item => {
+//         let localBase = path.join(base, item);
+//         let state = fs.statSync(localBase);
+//         if (state.isDirectory()) {
+//             readDir(localBase, outBase, level + 1);
+//         } else {
+//             if (path.extname(localBase).toUpperCase() === '.MP3') {
+//                 firstLetterTemp = path
+//                     .basename(localBase)
+//                     .slice(0, 1)
+//                     .toUpperCase();
+//                 if (dirsArr.indexOf(firstLetterTemp) === -1) {
+//                     dirsArr.push(firstLetterTemp);
+//                     dirTemp = path.resolve(
+//                         '' + outBase,
+//                         './' + firstLetterTemp
+//                     );
+//                     tempDirFileName = path.resolve('' + dirTemp, './' + item);
+//                     fs.mkdirSync(dirTemp);
+//                     fs
+//                         .createReadStream(localBase)
+//                         .pipe(fs.createWriteStream(tempDirFileName));
+//                 } else {
+//                     dirTemp = path.resolve(
+//                         '' + outBase,
+//                         './' + firstLetterTemp
+//                     );
+//                     tempDirFileName = path.resolve('' + dirTemp, './' + item);
+//                     fs
+//                         .createReadStream(localBase)
+//                         .pipe(fs.createWriteStream(tempDirFileName));
 
-                    // console.log('TEMP');
+//                     // console.log('TEMP');
+//                 }
+//             }
+//         }
+//     });
+// };
+
+// readDir(inDir, outDir, 0);
+
+const combineMusicCollection = (base, outBase, level) => {
+    return new Promise((resolve, reject) => {
+        try {
+            const files = fs.readdirSync(base);
+            let firstLetterTemp = '';
+            let dirTemp;
+            let tempDirFileName;
+            files.forEach(item => {
+                let localBase = path.join(base, item);
+                let state = fs.statSync(localBase);
+                if (state.isDirectory()) {
+                    readDir(localBase, outBase, level + 1);
+                } else {
+                    if (path.extname(localBase).toUpperCase() === '.MP3') {
+                        firstLetterTemp = path
+                            .basename(localBase)
+                            .slice(0, 1)
+                            .toUpperCase();
+                        if (dirsArr.indexOf(firstLetterTemp) === -1) {
+                            dirsArr.push(firstLetterTemp);
+                            dirTemp = path.resolve(
+                                '' + outBase,
+                                './' + firstLetterTemp
+                            );
+                            tempDirFileName = path.resolve(
+                                '' + dirTemp,
+                                './' + item
+                            );
+                            fs.mkdirSync(dirTemp);
+                            fs
+                                .createReadStream(localBase)
+                                .pipe(fs.createWriteStream(tempDirFileName));
+                        } else {
+                            dirTemp = path.resolve(
+                                '' + outBase,
+                                './' + firstLetterTemp
+                            );
+                            tempDirFileName = path.resolve(
+                                '' + dirTemp,
+                                './' + item
+                            );
+                            fs
+                                .createReadStream(localBase)
+                                .pipe(fs.createWriteStream(tempDirFileName));
+
+                            // console.log('TEMP');
+                        }
+                    }
                 }
-            }
+            });
+            resolve();
+        } catch (err) {
+            () => {
+                reject();
+            };
         }
     });
-};
+}; //combineMusicCollection
 
-readDir(inDir, outDir, 0);
+combineMusicCollection(inDir, outDir, 0).then(() => {
+    console.log('all files are sorted');
+});
+
+// httpGet('/page-not-exists')
+//     .then(response => JSON.parse(response))
+//     .then(user => httpGet(`https://api.github.com/users/${user.name}`))
+//     .then(githubUser => {
+//         githubUser = JSON.parse(githubUser);
+
+//         let img = new Image();
+//         img.src = githubUser.avatar_url;
+//         img.className = 'promise-avatar-example';
+//         document.body.appendChild(img);
+
+//         return new Promise((resolve, reject) => {
+//             setTimeout(() => {
+//                 img.remove();
+//                 resolve();
+//             }, 3000);
+//         });
+//     })
+//     .catch(error => {
+//         alert(error); // Error: Not Found
+//     });
