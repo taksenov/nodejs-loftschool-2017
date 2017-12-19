@@ -30,60 +30,15 @@ if (outputParam.status) {
 }
 // инициализация и проверка параметров
 
+// установка переменных из параметров
 const inDir = inputParam.body;
 const outDir = outputParam.body;
 const isDelete = deleteParam.status;
+// установка переменных из параметров
 
-// нужен будет parse
-// path.basename(path[, ext])
+// handlers for file sorting programs ============================================================
 let dirsArr = [];
-// const readDir = (base, outBase, level) => {
-//     const files = fs.readdirSync(base);
-//     let firstLetterTemp = '';
-//     let dirTemp;
-//     let tempDirFileName;
-//     files.forEach(item => {
-//         let localBase = path.join(base, item);
-//         let state = fs.statSync(localBase);
-//         if (state.isDirectory()) {
-//             readDir(localBase, outBase, level + 1);
-//         } else {
-//             if (path.extname(localBase).toUpperCase() === '.MP3') {
-//                 firstLetterTemp = path
-//                     .basename(localBase)
-//                     .slice(0, 1)
-//                     .toUpperCase();
-//                 if (dirsArr.indexOf(firstLetterTemp) === -1) {
-//                     dirsArr.push(firstLetterTemp);
-//                     dirTemp = path.resolve(
-//                         '' + outBase,
-//                         './' + firstLetterTemp
-//                     );
-//                     tempDirFileName = path.resolve('' + dirTemp, './' + item);
-//                     fs.mkdirSync(dirTemp);
-//                     fs
-//                         .createReadStream(localBase)
-//                         .pipe(fs.createWriteStream(tempDirFileName));
-//                 } else {
-//                     dirTemp = path.resolve(
-//                         '' + outBase,
-//                         './' + firstLetterTemp
-//                     );
-//                     tempDirFileName = path.resolve('' + dirTemp, './' + item);
-//                     fs
-//                         .createReadStream(localBase)
-//                         .pipe(fs.createWriteStream(tempDirFileName));
-
-//                     // console.log('TEMP');
-//                 }
-//             }
-//         }
-//     });
-// };
-
-// readDir(inDir, outDir, 0);
-
-const combineMusicCollection = (base, outBase, level) => {
+const handleCombineMusicCollection = (base, outBase, level) => {
     return new Promise((resolve, reject) => {
         try {
             const files = fs.readdirSync(base);
@@ -94,7 +49,7 @@ const combineMusicCollection = (base, outBase, level) => {
                 let localBase = path.join(base, item);
                 let state = fs.statSync(localBase);
                 if (state.isDirectory()) {
-                    readDir(localBase, outBase, level + 1);
+                    handleCombineMusicCollection(localBase, outBase, level + 1);
                 } else {
                     if (path.extname(localBase).toUpperCase() === '.MP3') {
                         firstLetterTemp = path
@@ -127,43 +82,84 @@ const combineMusicCollection = (base, outBase, level) => {
                             fs
                                 .createReadStream(localBase)
                                 .pipe(fs.createWriteStream(tempDirFileName));
-
-                            // console.log('TEMP');
                         }
                     }
                 }
             });
             resolve();
         } catch (err) {
-            () => {
-                reject();
-            };
+            console.error(err);
+            reject(new Error('HANDLE_COMBINE_MUSIC_COLLECTION_ERROR'));
         }
     });
-}; //combineMusicCollection
+}; //handleCombineMusicCollection
 
-combineMusicCollection(inDir, outDir, 0).then(() => {
-    console.log('all files are sorted');
-});
+const handleDeleteInputDir = (base, level) => {
+    return new Promise((resolve, reject) => {
+        try {
+            const files = fs.readdirSync(base);
+            files.forEach(item => {
+                let localBase = path.join(base, item);
+                let state = fs.statSync(localBase);
+                if (state.isDirectory()) {
+                    fs.readdir(state, function(err, files) {
+                        if (err) {
+                            // some sort of error
+                        } else {
+                            if (!files.length) {
+                                fs.rmdirSync(item);
+                                // directory appears to be empty
+                            }
+                        }
+                    });
+                    console.log(' '.repeat(level) + 'Dir: ' + item);
+                    handleDeleteInputDir(localBase, level + 1);
+                } else {
+                    console.log(' '.repeat(level) + 'File: ' + it__em);
+                    fs.unlinkSync(item);
+                }
+            });
+            resolve();
+        } catch (err) {
+            console.error(err);
+            reject(new Error('HANDLE_DELETE_INPUT_DIR_ERROR'));
+        }
+    });
+}; //handleDeleteInputDir;
+// handlers for file sorting programs ============================================================
 
-// httpGet('/page-not-exists')
-//     .then(response => JSON.parse(response))
-//     .then(user => httpGet(`https://api.github.com/users/${user.name}`))
-//     .then(githubUser => {
-//         githubUser = JSON.parse(githubUser);
+handleCombineMusicCollection(inDir, outDir, 0)
+    .then(inDir => {
+        if (isDelete) {
+            handleDeleteInputDir(inDir, 0);
+        } else {
+            process.exit();
+        }
+    })
+    .catch(error => {
+        console.error(error);
+    });
 
-//         let img = new Image();
-//         img.src = githubUser.avatar_url;
-//         img.className = 'promise-avatar-example';
-//         document.body.appendChild(img);
+// fs.readdir(dirname, function(err, files) {
+//     if (err) {
+//         // some sort of error
+//     } else {
+//         if (!files.length) {
+//             // directory appears to be empty
+//         }
+//     }
+// });
 
-//         return new Promise((resolve, reject) => {
-//             setTimeout(() => {
-//                 img.remove();
-//                 resolve();
-//             }, 3000);
-//         });
-//     })
-//     .catch(error => {
-//         alert(error); // Error: Not Found
+// var deleteFolderRecursive = function(path) {
+//   if (fs.existsSync(path)) {
+//     fs.readdirSync(path).forEach(function(file, index){
+//       var curPath = path + "/" + file;
+//       if (fs.lstatSync(curPath).isDirectory()) { // recurse
+//         deleteFolderRecursive(curPath);
+//       } else { // delete file
+//         fs.unlinkSync(curPath);
+//       }
 //     });
+//     fs.rmdirSync(path);
+//   }
+// };
