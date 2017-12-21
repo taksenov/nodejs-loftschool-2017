@@ -23,7 +23,9 @@ if (!inputParam.status || !outputParam.status) {
     process.exit();
 }
 if (outputParam.status) {
-    if (fs.readdirSync(outputParam.body).length !== 0) {
+    if (!fs.existsSync()) {
+        fs.mkdirSync(outputParam.body);
+    } else if (fs.readdirSync(outputParam.body).length !== 0) {
         console.log(`Каталог --output=${outputParam.body} должен быть пустым`);
         process.exit();
     }
@@ -38,54 +40,61 @@ const isDelete = deleteParam.status;
 
 // handlers for file sorting programs ============================================================
 let dirsArr = [];
-const handleCombineMusicCollection = (base, outBase, level) => {
+const handleCombineMusicCollection = (base, outBase) => {
     return new Promise((resolve, reject) => {
         try {
-            const files = fs.readdirSync(base);
-            let firstLetterTemp = '';
-            let dirTemp;
-            let tempDirFileName;
-            files.forEach(item => {
-                let localBase = path.join(base, item);
-                let state = fs.statSync(localBase);
-                if (state.isDirectory()) {
-                    handleCombineMusicCollection(localBase, outBase, level + 1);
-                } else {
-                    if (path.extname(localBase).toUpperCase() === '.MP3') {
-                        firstLetterTemp = path
-                            .basename(localBase)
-                            .slice(0, 1)
-                            .toUpperCase();
-                        if (dirsArr.indexOf(firstLetterTemp) === -1) {
-                            dirsArr.push(firstLetterTemp);
-                            dirTemp = path.resolve(
-                                '' + outBase,
-                                './' + firstLetterTemp
-                            );
-                            tempDirFileName = path.resolve(
-                                '' + dirTemp,
-                                './' + item
-                            );
-                            fs.mkdirSync(dirTemp);
-                            fs
-                                .createReadStream(localBase)
-                                .pipe(fs.createWriteStream(tempDirFileName));
-                        } else {
-                            dirTemp = path.resolve(
-                                '' + outBase,
-                                './' + firstLetterTemp
-                            );
-                            tempDirFileName = path.resolve(
-                                '' + dirTemp,
-                                './' + item
-                            );
-                            fs
-                                .createReadStream(localBase)
-                                .pipe(fs.createWriteStream(tempDirFileName));
+            const recurFunc = (base, outBase) => {
+                const files = fs.readdirSync(base);
+                let firstLetterTemp = '';
+                let dirTemp;
+                let tempDirFileName;
+                files.forEach(item => {
+                    let localBase = path.join(base, item);
+                    let state = fs.statSync(localBase);
+                    if (state.isDirectory()) {
+                        recurFunc(localBase, outBase);
+                    } else {
+                        if (path.extname(localBase).toUpperCase() === '.MP3') {
+                            firstLetterTemp = path
+                                .basename(localBase)
+                                .slice(0, 1)
+                                .toUpperCase();
+                            if (dirsArr.indexOf(firstLetterTemp) === -1) {
+                                dirsArr.push(firstLetterTemp);
+                                dirTemp = path.resolve(
+                                    '' + outBase,
+                                    './' + firstLetterTemp
+                                );
+                                tempDirFileName = path.resolve(
+                                    '' + dirTemp,
+                                    './' + item
+                                );
+                                fs.mkdirSync(dirTemp);
+                                fs
+                                    .createReadStream(localBase)
+                                    .pipe(
+                                        fs.createWriteStream(tempDirFileName)
+                                    );
+                            } else {
+                                dirTemp = path.resolve(
+                                    '' + outBase,
+                                    './' + firstLetterTemp
+                                );
+                                tempDirFileName = path.resolve(
+                                    '' + dirTemp,
+                                    './' + item
+                                );
+                                fs
+                                    .createReadStream(localBase)
+                                    .pipe(
+                                        fs.createWriteStream(tempDirFileName)
+                                    );
+                            }
                         }
                     }
-                }
-            });
+                });
+            };
+            recurFunc(base, outBase);
             resolve(base);
         } catch (err) {
             console.error(err);
@@ -94,19 +103,29 @@ const handleCombineMusicCollection = (base, outBase, level) => {
     });
 }; //handleCombineMusicCollection
 
-const handleDeleteFilesInInputDir = (base, level) => {
+const handleDeleteFilesInInputDir = (base, deleteFlag) => {
     return new Promise((resolve, reject) => {
         try {
-            const files = fs.readdirSync(base);
-            files.forEach(item => {
-                let localBase = path.join(base, item);
-                let state = fs.statSync(localBase);
-                if (state.isDirectory()) {
-                    handleDeleteFilesInInputDir(localBase, level + 1);
-                } else {
-                    fs.unlinkSync(localBase);
-                }
-            });
+            if (!deleteFlag) {
+                resolve();
+                return;
+            }
+            const recurFunc = base => {
+                let files = fs.readdirSync(base);
+                files.forEach(item => {
+                    let localBase = path.join(base, item);
+                    let state = fs.statSync(localBase);
+                    if (state.isFile()) {
+                        fs.unlinkSync(localBase);
+                    } else if (state.isDirectory()) {
+                        console.log('files', files);
+                        recurFunc(localBase);
+                    }
+                });
+            };
+            recurFunc(base);
+
+            let newBase = base;
             resolve(base);
         } catch (err) {
             console.error(err);
@@ -115,40 +134,54 @@ const handleDeleteFilesInInputDir = (base, level) => {
     });
 }; //handleDeleteFilesInInputDir
 
-const handleDeleteInputDir = base => {
-    return new Promise((resolve, reject) => {
-        try {
-            if (fs.existsSync(base)) {
-                fs.readdirSync(base).forEach(file => {
-                    var curPath = base + '/' + file;
-                    if (fs.lstatSync(curPath).isDirectory()) {
-                        // recurse
-                        handleDeleteInputDir(curPath);
-                    } else {
-                        // delete file
-                        fs.unlinkSync(curPath);
-                    }
-                });
-                fs.rmdirSync(base);
-            }
-            resolve();
-        } catch (err) {
-            console.error(err);
-            reject(new Error('HANDLE_DELETE_INPUT_DIR_ERROR'));
-        }
-    });
-}; //handleDeleteInputDir
+// const handleDeleteInputDir = base => {
+//     return new Promise((resolve, reject) => {
+//         try {
+//             if (!base) {
+//                 resolve();
+//                 return;
+//             }
+//             const cleanEmptyFoldersRecursively = folder => {
+//                 // var isDir = fs.statSync(folder).isDirectory();
+//                 // if (!isDir) {
+//                 //     return;
+//                 // }
+//                 // console.log('folder', folder);
+//                 var files = fs.readdirSync(folder);
+//                 if (files.length > 0) {
+//                     files.forEach(function(file) {
+//                         var fullPath = path.join(folder, file);
+//                         cleanEmptyFoldersRecursively(fullPath);
+//                     });
+
+//                     // re-evaluate files; after deleting subfolder
+//                     // we may have parent folder empty now
+//                     files = fs.readdirSync(folder);
+//                 }
+
+//                 if (files.length === 0) {
+//                     // console.log('removing: ', folder);
+//                     fs.rmdirSync(folder);
+//                     return;
+//                 }
+//             }; //cleanEmptyFoldersRecursively
+//             cleanEmptyFoldersRecursively(base);
+//             resolve();
+//         } catch (err) {
+//             console.error(err);
+//             reject(new Error('HANDLE_DELETE_INPUT_DIR_ERROR'));
+//         }
+//     });
+// }; //handleDeleteInputDir
 // handlers for file sorting programs ============================================================
 
-handleCombineMusicCollection(inDir, outDir, 0)
+handleCombineMusicCollection(inDir, outDir)
     .then(inDir => {
-        if (isDelete) {
-            handleDeleteFilesInInputDir(inDir, 0).then(inDir => {
-                handleDeleteInputDir(inDir);
-            });
-        } else {
-            process.exit();
-        }
+        handleDeleteFilesInInputDir(inDir, isDelete).then(inDir => {
+            console.log('Return inDir', inDir);
+            // handleDeleteInputDir(inDir);
+            // fs.rmdirSync(inDir);
+        });
     })
     .catch(error => {
         console.error(error);
