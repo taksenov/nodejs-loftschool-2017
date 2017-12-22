@@ -23,7 +23,7 @@ if (!inputParam.status || !outputParam.status) {
     process.exit();
 }
 if (outputParam.status) {
-    if (!fs.existsSync()) {
+    if (fs.existsSync(outputParam.body) === false) {
         fs.mkdirSync(outputParam.body);
     } else if (fs.readdirSync(outputParam.body).length !== 0) {
         console.log(`Каталог --output=${outputParam.body} должен быть пустым`);
@@ -40,6 +40,27 @@ const isDelete = deleteParam.status;
 
 // handlers for file sorting programs ============================================================
 let dirsArr = [];
+let copyPromices = [];
+
+/**
+ * Вспомогательная функция, набивает массив промисами обрабатывающими поток чтения-записи
+ * @param {string} source               --откуда копировать
+ * @param {string} dest                 --куда копировать
+ */
+function copyFile(source, dest) {
+    return new Promise((resolve, reject) => {
+        const stream = fs
+            .createReadStream(source)
+            .pipe(fs.createWriteStream(dest));
+        stream.on('close', () => {
+            resolve();
+        });
+        stream.on('error', () => {
+            reject(new Error('COPY_FILE_ERROR'));
+        });
+    });
+} //copyFile
+
 const handleCombineMusicCollection = (base, outBase) => {
     return new Promise((resolve, reject) => {
         try {
@@ -70,11 +91,9 @@ const handleCombineMusicCollection = (base, outBase) => {
                                     './' + item
                                 );
                                 fs.mkdirSync(dirTemp);
-                                fs
-                                    .createReadStream(localBase)
-                                    .pipe(
-                                        fs.createWriteStream(tempDirFileName)
-                                    );
+                                copyPromices.push(
+                                    copyFile(localBase, tempDirFileName)
+                                );
                             } else {
                                 dirTemp = path.resolve(
                                     '' + outBase,
@@ -84,18 +103,15 @@ const handleCombineMusicCollection = (base, outBase) => {
                                     '' + dirTemp,
                                     './' + item
                                 );
-                                fs
-                                    .createReadStream(localBase)
-                                    .pipe(
-                                        fs.createWriteStream(tempDirFileName)
-                                    );
+                                copyPromices.push(
+                                    copyFile(localBase, tempDirFileName)
+                                );
                             }
                         }
                     }
                 });
             };
             recurFunc(base, outBase);
-            resolve(base);
         } catch (err) {
             console.error(err);
             reject(new Error('HANDLE_COMBINE_MUSIC_COLLECTION_ERROR'));
@@ -118,14 +134,12 @@ const handleDeleteFilesInInputDir = (base, deleteFlag) => {
                     if (state.isFile()) {
                         fs.unlinkSync(localBase);
                     } else if (state.isDirectory()) {
-                        console.log('files', files);
                         recurFunc(localBase);
                     }
                 });
             };
             recurFunc(base);
 
-            let newBase = base;
             resolve(base);
         } catch (err) {
             console.error(err);
@@ -134,55 +148,46 @@ const handleDeleteFilesInInputDir = (base, deleteFlag) => {
     });
 }; //handleDeleteFilesInInputDir
 
-// const handleDeleteInputDir = base => {
-//     return new Promise((resolve, reject) => {
-//         try {
-//             if (!base) {
-//                 resolve();
-//                 return;
-//             }
-//             const cleanEmptyFoldersRecursively = folder => {
-//                 // var isDir = fs.statSync(folder).isDirectory();
-//                 // if (!isDir) {
-//                 //     return;
-//                 // }
-//                 // console.log('folder', folder);
-//                 var files = fs.readdirSync(folder);
-//                 if (files.length > 0) {
-//                     files.forEach(function(file) {
-//                         var fullPath = path.join(folder, file);
-//                         cleanEmptyFoldersRecursively(fullPath);
-//                     });
+const handleDeleteInputDir = base => {
+    return new Promise((resolve, reject) => {
+        try {
+            if (!base) {
+                resolve();
+                return;
+            }
+            const cleanEmptyFoldersRecursively = folder => {
+                var files = fs.readdirSync(folder);
+                if (files.length > 0) {
+                    files.forEach(function(file) {
+                        var fullPath = path.join(folder, file);
+                        cleanEmptyFoldersRecursively(fullPath);
+                    });
 
-//                     // re-evaluate files; after deleting subfolder
-//                     // we may have parent folder empty now
-//                     files = fs.readdirSync(folder);
-//                 }
+                    // re-evaluate files; after deleting subfolder
+                    // we may have parent folder empty now
+                    files = fs.readdirSync(folder);
+                }
 
-//                 if (files.length === 0) {
-//                     // console.log('removing: ', folder);
-//                     fs.rmdirSync(folder);
-//                     return;
-//                 }
-//             }; //cleanEmptyFoldersRecursively
-//             cleanEmptyFoldersRecursively(base);
-//             resolve();
-//         } catch (err) {
-//             console.error(err);
-//             reject(new Error('HANDLE_DELETE_INPUT_DIR_ERROR'));
-//         }
-//     });
-// }; //handleDeleteInputDir
+                if (files.length === 0) {
+                    fs.rmdirSync(folder);
+                    return;
+                }
+            }; //cleanEmptyFoldersRecursively
+            cleanEmptyFoldersRecursively(base);
+            resolve(base);
+        } catch (err) {
+            console.error(err);
+            reject(new Error('HANDLE_DELETE_INPUT_DIR_ERROR'));
+        }
+    });
+}; //handleDeleteInputDir
 // handlers for file sorting programs ============================================================
 
-handleCombineMusicCollection(inDir, outDir)
-    .then(inDir => {
-        handleDeleteFilesInInputDir(inDir, isDelete).then(inDir => {
-            console.log('Return inDir', inDir);
-            // handleDeleteInputDir(inDir);
-            // fs.rmdirSync(inDir);
-        });
-    })
-    .catch(error => {
-        console.error(error);
+// main code thread ==============================================================================
+handleCombineMusicCollection(inDir, outDir);
+Promise.all(copyPromices).then(() => {
+    handleDeleteFilesInInputDir(inDir, isDelete).then(data => {
+        handleDeleteInputDir(data);
     });
+});
+// main code thread ==============================================================================
