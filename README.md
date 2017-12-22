@@ -10,7 +10,8 @@
 
 **Homework #1**: [Систематизация музыки (консольное приложение)](https://github.com/taksenov/nodejs-loftschool-2017/tree/homework-1)
 
-2. Консольные часы в реальном времени
+**Homework #2**: [HTTP сервер с консольными часами в реальном времени](https://github.com/taksenov/nodejs-loftschool-2017/tree/homework-2)
+
 3. Одностраничный сайт визитка с простой админкой (Express.js)
 4. Одностраничный сайт визитка с простой админкой (Koa.js)
 5. Интернет портал (основное дз)
