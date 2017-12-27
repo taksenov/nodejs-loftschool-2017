@@ -11,25 +11,12 @@
         },
         "sourceType": "module"
     },
-    "plugins": [
-        "react"
-    ],
+    "plugins": ["react"],
     "rules": {
-        "indent": [
-            "error",
-            4
-        ],
-        "linebreak-style": [
-            "error",
-            "unix"
-        ],
-        "quotes": [
-            "error",
-            "single"
-        ],
-        "semi": [
-            "error",
-            "always"
-        ]
+        "indent": ["error", 4],
+        "linebreak-style": ["error", "unix"],
+        "quotes": ["error", "single"],
+        "no-extra-semi": "error",
+        "semi": ["error", "always"]
     }
 }
